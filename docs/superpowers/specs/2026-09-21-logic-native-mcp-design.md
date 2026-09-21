@@ -113,7 +113,7 @@ AX отдаёт полный channel strip только для **выделен�
 - Мы не открываем Mixer-панель сами (это изменение вида пользователя).
 
 ### 4.3 Адреса
-Грамматика: `path := segment ("/" segment)*`, `segment := kind [":" selector]`.
+Грамматика: `path := segment ("/" segment)*`, `segment := kind [":" selector | "@" position]`. `insert:K`/`send:K` — номер слота, как в UI Logic (слоты позиционны в самом Logic, это не AX-индекс).
 Селекторы: `3` (**номер из UI Logic**, 1-based, парсится из `Track 3 “…”`), `"Rose Vocal"` (имя; коллизия →
 `ambiguous` с кандидатами), `selected`, `#t4f2` (хэндл), для `param` — имя как в Controls-виде.
 Корневые сокращения: `track:3` ≡ `/track:3`.
