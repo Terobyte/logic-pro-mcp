@@ -62,7 +62,7 @@ OSC-канал **сохраняется** до решения по итогам 
                             │ Swift API (типизированный)
 ┌──────────── LogicKit (library, всё знание о Logic) ──────────────┐
 │ Map:      Path parser · Grammar(+status) · Resolver · Handles    │
-│ Engine:   AXExecutor(все AX)   · Recipes · Primitives · Verify │
+│ Engine:   AXExecutor(все AX)     · Recipes · Primitives · Verify │
 │ UI:       ModalGuard · WindowTransaction · FocusGuard            │
 │ Platform: AXNode(protocol) ← LiveAX | FixtureAX · LocaleTable    │
 │ Streams:  MIDI (CoreMIDI) · EventBus · AudioAnalysis · OSC(opt)  │
