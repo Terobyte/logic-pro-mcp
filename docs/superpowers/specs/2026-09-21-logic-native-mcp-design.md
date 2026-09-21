@@ -1,6 +1,6 @@
 # Logic-native MCP: дизайн
 
-Дата: 2026-09-21 · Версия: v2 (после ревью) · **Статус: DRAFT до завершения P0.**
+Дата: 2026-09-21 · Версия: v3 (после двух ревью) · **Статус: DRAFT до завершения P0.**
 Архитектура (§3–§7) утверждена в брейншторме; всё, что помечено ⛳S*, — гипотеза до соответствующего спайка
 и может измениться по его итогам. Основа: `OBSERVATIONS.md`, `IMPROVEMENTS.md`, аудит кода upstream (c69f952…f8127c3).
 
@@ -94,11 +94,11 @@ OSC-канал **сохраняется** до решения по итогам 
 │  │  ├─ send:K           bus, level(dB), pre_post, bypass
 │  │  └─ meter            peak(dB), gain_reduction(dB)      — живое значение, не кэшируется
 │  ├─ track:M             дети стека
-│  ├─ take:K              take-лейны                        └─ analysis
-│  └─ region:K            name, start, end, length, loop, muted, gain, fades   ├─ notes  └─ analysis
+│  ├─ take:7             take-лейны (№ дубля)              └─ analysis
+│  └─ region@"17 1 1 1"  name, start, end, length, loop, muted, gain, fades   ├─ notes  └─ analysis
 ├─ master                 strip
-├─ marker:K               name, position
-├─ patches · render:K · ui (окна, модалка, undo_title) · system (health, permissions, версия, отпечаток)
+├─ marker:"Chorus"        name, position
+├─ patches · render:r3 · ui (окна, модалка, undo_title) · system (health, permissions, версия, отпечаток)
 └─ raw                    AX-люк (4.7)
 ```
 
@@ -118,6 +118,13 @@ AX отдаёт полный channel strip только для **выделен�
 `ambiguous` с кандидатами), `selected`, `#t4f2` (хэндл), для `param` — имя как в Controls-виде.
 Корневые сокращения: `track:3` ≡ `/track:3`.
 
+Селекторы остальных коллекций (позиционных индексов нет нигде):
+- `take:7` — номер дубля, как Logic подписывает его в take folder (`Take 7`); либо имя дубля.
+- `region@"17 1 1 1"` — начало региона на своём треке/лейне (уникально на лейне); либо `region:"Audio 1#07"` — имя
+  (коллизия → `ambiguous`); либо хэндл.
+- `marker:"Chorus"` — имя (коллизия → `ambiguous`); либо `marker@"33 1 1 1"`.
+- `render:r3` — ID, который выдаёт сам сервер при баунсе (стабилен в пределах сессии).
+
 ### 4.4 Хэндлы
 Хэндл = короткий хэш отпечатка `(kind, UI-номер, имя, путь родителя, имена соседей prev/next)`.
 Разрешение:
@@ -127,6 +134,11 @@ AX отдаёт полный channel strip только для **выделен�
 
 После любой структурной мутации (create/delete/duplicate/unpack/flatten/undo/redo, смена проекта) таблица хэндлов
 сбрасывается; старые хэндлы → `stale_ref`. Хэндлы — защита от промаха, а не гарантия; при сомнении — ошибка.
+
+Регионы: отпечаток = (хэндл трека/лейна, start, length, name). Мутация региона (`split`, `trim`, `move`, `join`)
+делает его старый хэндл и старый `region@start` недействительными (`stale_ref`), а ответ мутации **возвращает новые
+адреса** получившихся кусков: `✓ split region@"17 1 1 1" → #r9a1 @17 1 1 1 (2 bars), #r9a2 @19 1 1 1 (6 bars)`.
+Многошаговые рецепты (`assemble`) адресуют исходные диапазоны `(take, from, to)`, а не `region` после мутаций.
 
 ### 4.5 Значения
 Вход — строки в единицах Logic по `unit` узла: `"-6 dB"`, `"-inf"`, `"38 ms"`, `"1.6 s"`, `"20%"`, `"L12"`/`"R5"`/`"C"`,
@@ -146,11 +158,19 @@ track:3 #t4f2 "Rose Vocal" stack stereo M- S- R-  in=Bus 1 out=St Out  [selected
 - Тогглы одной буквой, дефолты опускаются, предупреждения `⚠` — производные факты карты.
 - Непрочитанный узел — `?unavailable(reason)`, никогда пустой список.
 - Take-лейны свёрнуты: `takes:20 (active 7)`; раскрываются только `depth≥2` или прямым адресом.
+- **Свёртка больших списков.** Список детей показывает максимум 12 строк: сначала selected/armed/soloed/с
+  предупреждениями, затем по порядку; строка-итог `tracks:40 (showing 12; page:"13-24" or fields:…)`.
+  Параметр `page` листает, `fields` проецирует (напр. `fields:"name,mute"` → одна короткая строка на трек).
 - `json` — тот же контент структурой, с `outputSchema`.
 
 **`until` — мини-язык условий** (не произвольные выражения): одно условие `field op value` над узлом `path`,
-`op ∈ {=, !=, <, <=, >, >=}`, значения в единицах узла. Пример: `until:"state=stopped"`, `until:"position>=17 1 1 1"`.
-`timeout` обязателен, максимум 300 s.
+`op ∈ {=, !=, <, <=, >, >=}`. Парсинг: `field` — идентификатор до первого оператора; оператор — самый длинный
+совпавший (`>=` раньше `>`); `value` — весь остаток строки, обрезанный по краям, парсится по `unit` поля (пробелы
+внутри допустимы). Примеры: `until:"state=stopped"`, `until:"position>=17 1 1 1"`.
+`timeout` обязателен: дефолт 10 s, максимум 30 s; до 120 s — только если клиент передал progress token (сервер шлёт
+progress notifications раз в 5 s). По таймауту — `timeout` с последним прочитанным значением.
+
+Микрокэш (§6) не применяется к живым узлам (`meter`, `transport.position`) — они читаются всегда заново.
 
 ### 4.7 Raw-люк
 `logic_read("track:3/insert:4/raw", depth=3)` — компактный AX-снимок поддерева (`role desc/title value [actions]`,
@@ -168,9 +188,12 @@ ref `r12`), только внутри уже зарезолвленного уз
 ## 5. Движок действий
 
 ### 5.1 Конвейер и сериализация
-**Все** AX-обращения — чтения, мутации, Watcher, `until` — идут через один `actor AXActor`. Мутации выполняются
-транзакциями; чтения между шагами транзакции других клиентов не вклиниваются. MIDI (CoreMIDI) и анализ аудио —
-вне AXActor.
+**Все** AX-обращения идут через один `actor AXActor`, но актор никогда не держат долго:
+- мутация = транзакция (сериализуется целиком; чужие чтения между её шагами не вклиниваются);
+- чтение, опрос Watcher, одна итерация `until` = короткий слот (одно чтение);
+- ожидание (`until`, deadline verify) живёт **вне** актора: цикл снаружи берёт короткие слоты, между ними актор
+  свободен для других запросов и подписок.
+MIDI (CoreMIDI) и анализ аудио — вне AXActor.
 
 ```
 resolve(path) → guard → act(primitives) → verify(readback, deadline) → Outcome
@@ -207,16 +230,32 @@ resolve(path) → guard → act(primitives) → verify(readback, deadline) → O
 - `restores` — рецепту приходится менять frontmost/Space; FocusGuard восстанавливает их.
 Значения — гипотезы до ⛳S1.
 
-`FocusGuard` снимает до/после: frontmost-приложение, набор on-screen окон (`CGWindowListCopyWindowInfo`,
-on-screen only — отражает активный Space), список окон Logic. Любое отличие после операции (кроме объявленных
-побочных эффектов, напр. выделение) — ошибка рецепта в live-тесте.
+Logic обычно живёт на **другом Space**, `AXWindows` у него бывает пустым, а модалка становится `AXMainWindow`.
+Поэтому снимки строятся из источников, которые в этой среде не пустые:
+
+`WindowSnapshot` = {
+  - окна Logic: `CGWindowListCopyWindowInfo(.optionAll)` (включая off-screen и другие Space), фильтр по PID Logic,
+    ключ `kCGWindowNumber` + `kCGWindowName` + layer;
+  - `AXMainWindow` и `AXFocusedWindow` Logic: title, role, subrole;
+  - пользователь: frontmost-приложение и набор on-screen окон (`.optionOnScreenOnly` — отражает Space пользователя)
+}.
+
+- `FocusGuard`: снимок до/после; сторона пользователя (frontmost, on-screen) обязана совпасть, кроме объявленных
+  побочных эффектов.
+- `WindowTransaction` трекает окна **по `kCGWindowNumber`**: закрывает только номера, появившиеся после его шагов;
+  чужие окна не трогает никогда. **Teardown одинаков на success и на abort/error.**
+- Live-инвариант после **любого** исхода (включая ошибку): `AXMainWindow` — снова главное окно проекта, не модалка и
+  не окно плагина; набор окон Logic = исходный.
 
 Сосуществование с пользователем (он может параллельно кликать в Logic):
-- `WindowTransaction` закрывает только окна, которые открыл сам (идентификация по снимку до/после); чужие окна
-  не трогаем никогда.
 - Модалка, которой не было в плане рецепта (в т.ч. пользовательская), → `blocked(modal:"…")`. Мы её не закрываем.
-- Destructive-операции на `dirty`-проекте выполняются, но ответ содержит `undo_steps` и `⚠ project unsaved`.
-- `logic_do("/", "undo"|"redo", {steps?})` через Edit-меню по AX (невидимо), с verify по `undo_title`.
+- **Readback контекста перед каждым мутирующим шагом** многошагового рецепта: выделенный трек всё ещё N, наше окно
+  всё ещё открыто и main. Иначе → `blocked(context_changed: selection 3→1)` + teardown; уже сделанное перечисляется в `partial`.
+- Рецепт записывает ожидаемые заголовки undo (`Undo Insert Plug-in`, …). `undo_steps` в ответе и `undo` по нашей
+  инициативе валидны, только пока верх undo-стека Logic совпадает с нашими заголовками; иначе ответ говорит
+  `undo unsafe: top is "…"` и модель не откатывает слепо.
+- Destructive-операции на `dirty`-проекте выполняются, но ответ содержит `⚠ project unsaved`.
+- `logic_do("/", "undo"|"redo", {steps?})` через Edit-меню по AX, verify по `undo_title`.
 
 ### 5.5 Батчи и ошибки
 `logic_set(assign:[{path, value}, …])` — **упорядоченный массив**; `logic_do(steps:[{path, action, args}])`.
@@ -228,8 +267,12 @@ on-screen only — отражает активный Space), список око
 Ошибки (одна строка + подсказка, `isError: true`):
 `not_found(candidates)` · `ambiguous(candidates)` · `stale_ref` · `blocked(modal)` · `unavailable(reason)` ·
 `unsupported(reason)` · `need_select` · `invalid_args(signature)` · `invalid_value(range)` ·
-`verify_failed(want, got)` · `timeout` · `partial` · `confirm_required` · `permission(ax|automation)` ·
-`logic_not_running` · `unknown_logic_version`.
+`verify_failed(want, got)` · `timeout` · `partial` · `confirm_required` · `permission(ax)` ·
+`logic_not_running` · `anchor_missing(anchor)` · `need_mmc_input`.
+
+Размер ошибки: первая строка ≤ 60 токенов; дальше при необходимости до 5 кандидатов (`ambiguous`, `not_found`) или
+одна сигнатура (`invalid_args`), итого ≤ 150 токенов. Неизвестная версия Logic — **не ошибка**, а предупреждение в
+`system` и в первом ответе сессии; ошибка возникает только когда конкретный нужный якорь не найден (`anchor_missing`).
 
 ### 5.6 Статус возможностей и полнота
 Каждая запись грамматики `(kind, property|action)` имеет статус: `planned` → `recipe` → `live-verified`.
@@ -262,9 +305,11 @@ on-screen only — отражает активный Space), список око
 - **Необратимые** действия (нет Logic-undo: `quit`, `close` без сохранения, удаление файлов рендера/патчей,
   `flatten` take folder) требуют `confirm: true`, иначе `confirm_required` с описанием последствий.
 - `outputSchema` для `format=json`.
-- Бюджеты (тест, на фикстуре «бело красный»: 5 треков, stack, take folder с ~20 дублями, цепочка 5 плагинов с таблицей
-  параметров): описания всех инструментов ≤ 1500 токенов; `logic_read("/")` ≤ 350; трек со strip ≤ 200;
-  `insert:K` с параметрами ≤ 250; ошибка ≤ 60. Если измерение превысит — пересматриваем формат, а не бюджет.
+- Бюджеты измеряются тестом на **двух** фикстурах: «бело красный» (5 треков, stack, take folder ~20 дублей, цепочка
+  5 плагинов с параметрами) и синтетическая «big» (40 треков, 3 стека, 2 take folder, 8 aux, 20 маркеров):
+  описания всех инструментов ≤ 1500 токенов; `logic_read("/")` ≤ 350 на обеих (за счёт свёртки §4.6);
+  трек со strip ≤ 200; `insert:K` с параметрами ≤ 250; ошибка ≤ 150 (§5.5). Если измерение превысит —
+  пересматриваем формат, а не бюджет.
 
 ## 8. Домены v1
 Все рецепты ниже — гипотезы до спайков; итоговый список `live-verified` определяется P2–P5.
@@ -289,7 +334,14 @@ on-screen only — отражает активный Space), список око
 - Master strip; `select` трека с verify.
 
 ### 8.2 Транспорт и проект
-- play/stop/record/pause/locate — CoreMIDI MMC, verify по `transport.state`/`position`; без keyboard-фолбэка.
+- play/stop/record/pause: **основной путь — AX-кнопки control bar** (`set` по состоянию, verify по `transport.state`),
+  ⛳S11. **MMC — опциональный быстрый путь**: Logic слушает MMC только при включённом
+  `Project Settings › Synchronization › MIDI › Listen to MMC Input` и входе с `LogicProMCP` источника. Handshake —
+  при первом транспортном вызове сессии (не при старте: проверка play→stop озвучит проект): отправить команду →
+  readback. Нет реакции → MMC помечается недоступным до конца сессии, `system` показывает
+  `need_mmc_input (enable Listen to MMC Input)`, транспорт идёт через AX. `install.sh` печатает этот шаг.
+- locate: AX-поле позиции в control bar (`setText` + verify) ⛳S11; MMC locate — только после успешного handshake.
+  Keyboard-фолбэка нет.
 - tempo, signature, cycle, metronome, count-in — AX control bar, `setText`/`press` + verify.
 - Markers: читать/создать/переименовать/перейти.
 - Проект: open/new/save/save_as/close/launch/quit; `dirty`.
@@ -298,35 +350,48 @@ on-screen only — отражает активный Space), список око
 
 ### 8.3 Композиция / MIDI
 - Real-time — `logic_midi` через виртуальный CoreMIDI-источник.
-- `write_notes`: SMF → File › Import › MIDI File (путь через `setText`, ⛳S4) на выбранный трек в позицию locate.
-  Фолбэк — real-time запись через виртуальный порт.
-- `region:K/notes`: экспорт региона в MIDI-файл во временную папку → парсинг SMF (⛳S4).
+- `write_notes(track, at, notes)`: SMF во временный файл → verified select трека → locate `at` →
+  File › Import › MIDI File (transient open-panel, путь через `setText`, ⛳S4) → verify: на треке появился регион
+  с началом `at` → ответ с его адресом; `undo_steps:1`. Real-time запись как фолбэк **исключена из v1**
+  (arm + record + звук — противоречит §1). Если S4 красный — `write_notes` = `unsupported`.
+- `region@…/notes`: экспорт региона в MIDI-файл во временную папку → парсинг SMF (⛳S4).
 - Регионы и Functions-меню (quantize/transpose) — ⛳S3; при недостатке AX → `unsupported`.
 
 ### 8.4 «Уши»
 - Метры: `strip/meter` — снимок; окно наблюдения через `until`.
-- Баунс: `logic_do("/", "bounce", {range, stems?, format})` — transient-диалог, путь через `setText`; результат `render:K`;
+- Баунс: `logic_do("/", "bounce", {range, stems?, format})` — transient-диалог, путь через `setText`; результат `render:rN`;
   MCP progress.
 - Анализ (AVFoundation + Accelerate, in-process): integrated/short-term LUFS (BS.1770-4), true peak (4×), RMS, crest,
-  стерео-корреляция, 10 полос спектра, сравнение с референсом. Для `render:K` и `file:/path`.
+  стерео-корреляция, 10 полос спектра, сравнение с референсом. Для `render:rN` и `file:/path`.
 
 ### 8.5 Монтаж и комп («франкенштейн»)
 - Позиции: `"17 3 1 1"` или `"0:01:23.450"`; относительно региона `region:3@"2.5s"`.
-- `region:K`: `split(at:[…])` (MMC locate → Edit › Split at Playhead), `trim`, `move`, `copy`, `delete`, `mute`,
+- `region@…`: `split(at:[…])` (locate по §8.2 → Edit › Split at Playhead), `trim`, `move`, `copy`, `delete`, `mute`,
   `join`, `fade`, `crossfade`, `gain` — AX-выделение региона + AX-меню (⛳S3), verify по списку регионов трека.
-- Take folder: `take:K select` (активный дубль целиком), `unpack`, `flatten` (confirm).
+- Take folder: `take:N select` (активный дубль целиком), `unpack`, `flatten` (confirm).
 - **Комп — два разных глагола, не один:**
   - `comp(ranges:[{take, from, to}])` — нативный quick-swipe комп внутри take folder. Существует, только если ⛳S3
     подтвердит AX-доступ к диапазонам. Take folder остаётся take folder.
   - `assemble(ranges:[…], crossfade?)` — фолбэк-семантика с другим результатом: **дублирует** трек, на копии
     unpack → split по границам → mute лишнего → кроссфейды. Оригинальная take folder не трогается. Отдельный глагол,
     чтобы модель и пользователь знали, что результат — не take folder.
-- «Резать по слуху»: `region:K/analysis`, `take:K/analysis` — паузы, онсеты, громкость по фразам, шум (движок §8.4).
+- «Резать по слуху»: `region…/analysis`, `take:N/analysis` — паузы, онсеты, громкость по фразам, шум (движок §8.4).
+  **Источник аудио** (⛳S10), в порядке предпочтения:
+  1. файл региона прямо из пакета проекта (`<project>.logicx/Media/Audio Files/…`) + смещение и длина региона
+     в файле — без баунса и без окон; узел `region…/file`;
+  2. если смещение не читается: для take folder — на **копии** трека (как в `assemble`) unpack →
+     один `Export All Tracks as Audio Files` (один transient-диалог на все дубли) → анализ файлов;
+  3. иначе анализ дублей — `unsupported`; `assemble` работает по диапазонам, которые задаёт модель,
+     без «резать по слуху».
 
 ## 9. Платформа и дистрибуция
 - `LocaleTable`: все AX-строки в одном месте, семантические ключи; v1 — `en`.
 - Отпечаток Logic при старте: версия бандла (установлено 11.2) + наличие ключевых AX-якорей; неизвестная версия →
-  предупреждение в `system` и в первой ошибке.
+  предупреждение (§5.5), не ошибка.
+- Разрешения: **только Accessibility**. Жизненный цикл без AppleScript: launch/open — `NSWorkspace.open(_:withApplicationAt:)`,
+  quit — `NSRunningApplication.terminate()`. `PermissionChecker.allGranted` перестаёт требовать Automation.
+  Automation возвращается узко (Apple Event только к меню-бару через System Events), только если ⛳S9 даст исход (b).
+- `install.sh`: сборка, подпись, Accessibility, и (опционально) шаг включения `Listen to MMC Input`.
 - Стабильный signing identity, чтобы TCC-гранты переживали пересборку; `Scripts/install.sh` — сборка, подпись,
   установка в `~/.local/bin`, инструкции по разрешениям.
 - Логи только в stderr/os_log.
@@ -335,7 +400,10 @@ on-screen only — отражает активный Space), список око
 
 | # | Вопрос | Проверка | Что решает |
 |---|---|---|---|
-| S1 | Какие окна Logic меняют frontmost/Space при AX-управлении с Logic на другом Space (Search and Add, Controls, Save Patch, Import MIDI, Bounce, окно плагина) | живой прогон + снимки FocusGuard до/после | `visibility` каждого рецепта; нужен ли `restores` |
+| S1 | Какие окна Logic меняют frontmost/Space при AX-управлении с Logic на другом Space (Search and Add, Controls, Save Patch, Import MIDI, Bounce, окно плагина). **Плюс:** видны ли эти окна в `CGWindowList(.optionAll)` по PID Logic с номерами; как меняются `AXMainWindow`/`AXFocusedWindow`; закрываются ли по AX без фокуса | живой прогон + `WindowSnapshot` до/после | `visibility` рецептов; реализуемость `WindowTransaction` по `kCGWindowNumber` |
+| S9 | Работает ли `menu(path)` (AXPress по меню-бару) при Logic не-frontmost и на другом Space | живой прогон на Mix › Search and Add, Edit › Undo, File › Import | (a) AX достаточно → Automation не нужна; (b) нужен System Events → узкий Apple Event только для меню; (c) только с frontmost → рецепты `restores`, §12.7 пересматривается |
+| S10 | Источник аудио регионов/дублей: путь файла в пакете проекта, смещение и длина региона в файле (AX региона, Region Inspector, `Project Audio`) | axdump + сравнение с `Media/Audio Files` | 8.5 «резать по слуху»: вариант 1/2/3 |
+| S11 | Транспорт через AX control bar: кнопки Play/Stop/Record как тогглы с читаемым состоянием; поле позиции `setText`; и реакция на MMC при включённом `Listen to MMC Input` | живой прогон | основной путь транспорта и locate |
 | S2 | Шлёт ли Logic AXObserver-нотификации (transport, selection, windows) | подписка + лог | Watcher: observer vs опрос |
 | S3 | AX регионов арранжировки, take folder (выбор дубля, диапазоны комп-свайпа), Piano Roll, Functions-меню | axdump «бело красного» + прогон | 8.3, 8.5; есть ли `comp` |
 | S4 | Import MIDI / Export region: open/save-panel через `setText` пути | живой прогон | `write_notes`, `notes` |
@@ -353,8 +421,9 @@ on-screen only — отражает активный Space), список око
 - **P1 Фундамент** — split `LogicKit`/`LogicMCP`, `AXNode` + фикстуры, `LocaleTable`, Path/Grammar/Resolver/Handles,
   AXActor/Primitives/Verify, ArgValidator, TextRenderer, ledger + тест полноты, 4 инструмента.
   Вертикальный срез до `live-verified`: чтение `/`, `track:N`, `strip` выделенного; `set mute/solo`; `select` (по S8);
-  `undo/redo`; MMC play/stop/locate с verify.
-  Удаляются: старые диспетчеры, `ChannelRouter`, `StatePoller`, `CGEventChannel`. **OSC остаётся** опциональным каналом до решения по S6.
+  `undo/redo`; play/stop/locate по итогам S11 (AX control bar; MMC — только после handshake).
+  Удаляются: старые диспетчеры, `ChannelRouter`, `StatePoller`, `CGEventChannel`, `AppleScriptChannel`
+  (если S9 ≠ b — иначе остаётся только узкий menu-bar Apple Event). **OSC остаётся** опциональным каналом до решения по S6.
 - **P2 Сведение** — §8.1. Зависит от P1 (select, stepTo).
 - **P3 Транспорт + проект + события** — §8.2, Watcher/EventBus/`until`, subscriptions. Зависит от P1.
 - **P4 Композиция + монтаж** — §8.3, §8.5. Зависит от P3 (locate, `until`).
@@ -364,11 +433,13 @@ on-screen only — отражает активный Space), список око
 ## 12. Критерии готовности v1
 1. Ни одна мутация не возвращает `ok` без readback. `sent` — только MIDI-события; `unverified` — только raw-действия
    (выключены по умолчанию).
-2. Live-тест для **каждого** рецепта проверяет FocusGuard-инвариант своего класса `visibility`: `never` — нет новых
-   окон и смены frontmost/Space; `transient` — после операции набор окон и frontmost/Space совпадают с исходными;
-   `restores` — то же после восстановления.
+2. Live-тест для **каждого** рецепта проверяет инвариант своего класса `visibility` по `WindowSnapshot` (§5.4):
+   `never` — нет новых окон Logic (по `kCGWindowNumber`, включая off-screen) и смены frontmost/Space пользователя;
+   `transient` — после операции набор окон Logic, `AXMainWindow` и сторона пользователя совпадают с исходными;
+   `restores` — то же после восстановления. Инвариант проверяется **и на пути ошибки** (live-тест с принудительным
+   abort посередине рецепта).
 3. Все пункты `IMPROVEMENTS.md` P0–P2 закрыты как `live-verified` или явно `unsupported(reason)`.
-4. Бюджеты §7 проходят на фикстуре «бело красный».
+4. Бюджеты §7 проходят на **обеих** фикстурах («бело красный» и «big» на 40 треков).
 5. Тест полноты §5.6 зелёный; в индексе нет ни одной записи без свежей строки ledger.
 6. Офлайн-тесты покрывают парсеры, резолвер, хэндлы (включая сценарии delete/unpack/одинаковые имена → `stale_ref`),
    рендерер, валидацию аргументов, планирование рецептов.
@@ -376,8 +447,11 @@ on-screen only — отражает активный Space), список око
    выставить уровни/посылы, сохранить патч, забаунсить, получить LUFS/спектр — при выполнении критерия 2
    (рабочие окна мелькают и закрываются; Space и frontmost пользователя не меняются).
 8. Комп-сценарий на take folder «бело красного»: по итогам S3 — либо `comp` (нативно), либо `assemble` (на копии
-   трека) собирает вокал из кусков ≥3 дублей по точкам из анализа пауз, с кроссфейдами; оригинальная take folder
-   не изменена.
+   трека) собирает вокал из кусков ≥3 дублей с кроссфейдами; оригинальная take folder не изменена.
+   Точки склейки: из анализа пауз, если S10 дал вариант 1 или 2; иначе — заданные моделью диапазоны, и критерий
+   считается выполненным без «резать по слуху» (это фиксируется в спеке после P0, а не молча).
+9. Офлайн-тесты адресов монтажа: после `split` старый `region@start`/хэндл → `stale_ref`, а не соседний кусок;
+   одинаковые имена регионов → `ambiguous`.
 
 ## 13. Changelog v2 (ревью 2026-09-21)
 | # | Замечание | Где исправлено |
@@ -397,3 +471,16 @@ on-screen only — отражает активный Space), список око
 | + | Бюджеты на игрушечном проекте | §7 фикстура «бело красный» |
 | + | Фазы «можно переставлять» | §11 зависимости |
 | + | `unverified` отсутствовал в Outcome | §5.5 |
+
+## 14. Changelog v3 (второе ревью 2026-09-21)
+| Замечание | Где исправлено |
+|---|---|
+| FocusGuard/WindowTransaction слепы при Logic на другом Space | §5.4 `WindowSnapshot` (CGWindowList `.optionAll` по PID, `kCGWindowNumber`, AXMain/FocusedWindow), teardown на abort, S1, §12.2 |
+| Вставка плагина держалась на System Events | S9; §9 разрешения только AX, lifecycle через NSWorkspace/NSRunningApplication |
+| Нет источника аудио для анализа дублей | S10, §8.5 три варианта, §12.8 условный |
+| Позиционные region/take/marker | §4.3 селекторы, §4.4 хэндлы регионов и новые адреса после мутаций, §12.9 |
+| Пользователь меняет выделение посреди рецепта; слепой undo | §5.4 readback контекста на каждом шаге, undo-заголовки |
+| `until` держит актор до 300 s | §5.1 короткие слоты, §4.6 таймауты 10/30/120 s + progress |
+| MMC без `Listen to MMC Input`; realtime-record фолбэк | §8.2 AX control bar основной, MMC после handshake, S11; §8.3 фолбэк удалён |
+| Бюджеты на игрушке, ошибки ≤ 60 противоречат кандидатам | §4.6 свёртка/page/fields, §7 фикстура «big», §5.5 ярусы ошибок |
+| Мелочи: `until` с пробелами, meter vs микрокэш, `unknown_logic_version` | §4.6, §5.5 |
