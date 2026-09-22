@@ -5,7 +5,7 @@ let package = Package(
     name: "LogicProMCP",
     platforms: [.macOS(.v14)],
     products: [
-        .executable(name: "LogicProMCP", targets: ["LogicProMCP"]),
+        .executable(name: "LogicProMCP", targets: ["LogicMCP"]),
         .library(name: "LogicKit", targets: ["LogicKit"]),
         .executable(name: "logic-ax-dump", targets: ["logic-ax-dump"]),
         .executable(name: "logic-probe", targets: ["logic-probe"]),
@@ -23,18 +23,7 @@ let package = Package(
                 .linkedFramework("ApplicationServices"),
                 .linkedFramework("CoreGraphics"),
                 .linkedFramework("AppKit"),
-            ]
-        ),
-        .executableTarget(
-            name: "LogicProMCP",
-            dependencies: [
-                .product(name: "MCP", package: "swift-sdk"),
-            ],
-            path: "Sources/LogicProMCP",
-            linkerSettings: [
-                .linkedFramework("CoreMIDI"),
-                .linkedFramework("ApplicationServices"),
-                .linkedFramework("CoreGraphics"),
+                .linkedFramework("Network"),
             ]
         ),
         .executableTarget(
@@ -52,11 +41,6 @@ let package = Package(
             dependencies: ["LogicKit"],
             path: "Sources/logic-probe",
             linkerSettings: [.linkedFramework("CoreMIDI")]
-        ),
-        .testTarget(
-            name: "LogicProMCPTests",
-            dependencies: ["LogicProMCP"],
-            path: "Tests/LogicProMCPTests"
         ),
         .testTarget(
             name: "LogicMCPTests",

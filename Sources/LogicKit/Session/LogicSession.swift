@@ -151,6 +151,22 @@ public final class LogicSession: @unchecked Sendable {
         return done.joined(separator: "\n")
     }
 
+    let midiEngine = MIDIEngine()
+
+    /// `sent`, never `ok`: Logic's receipt of MIDI is not verifiable (spec §5.5).
+    public func midi(_ events: [MIDIEvent]) async throws -> String {
+        for e in events { try e.validate() }
+        do { try await midiEngine.start() } catch { throw LogicError.unavailable("CoreMIDI: \(error)") }
+        for e in events {
+            _ = await midiEngine.sendRawBytes(e.onBytes)
+            if case .note(_, _, _, let dur) = e, let off = e.offBytes {
+                let engine = midiEngine
+                Task { try? await Task.sleep(for: .milliseconds(dur)); _ = await engine.sendRawBytes(off) }
+            }
+        }
+        return Outcome.sent("\(events.count) events to \(MIDIConfig.sourceName)").text
+    }
+
     public func perform(steps: [(path: String, action: String, args: [String: String])]) async throws -> String {
         var done: [String] = []
         for (path, action, args) in steps {

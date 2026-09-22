@@ -66,4 +66,5 @@ echo ""
 echo "Claude Desktop config (~/Library/Application Support/Claude/claude_desktop_config.json):"
 echo '  {"mcpServers":{"logic-pro":{"command":"'"$INSTALL_DIR/$BINARY_NAME"'","args":[]}}}'
 echo ""
-echo "Done. Ensure Accessibility + Automation permissions are granted."
+echo "Done. Grant Accessibility to your terminal/Claude app: System Settings › Privacy & Security › Accessibility."
+echo "Optional (faster transport): in each Logic project enable Project Settings › Synchronization › MIDI › Listen to MMC Input."

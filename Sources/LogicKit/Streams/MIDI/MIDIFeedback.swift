@@ -2,9 +2,9 @@ import CoreMIDI
 import Foundation
 
 /// Parses inbound MIDI from Logic Pro and emits structured events.
-enum MIDIFeedback {
+public enum MIDIFeedback {
     /// Parsed MIDI event types.
-    enum Event: Sendable {
+    public enum Event: Sendable {
         case noteOn(channel: UInt8, note: UInt8, velocity: UInt8)
         case noteOff(channel: UInt8, note: UInt8, velocity: UInt8)
         case controlChange(channel: UInt8, controller: UInt8, value: UInt8)
@@ -17,7 +17,7 @@ enum MIDIFeedback {
     }
 
     /// Parse a CoreMIDI packet list and yield events into an AsyncStream continuation.
-    static func parse(packetList: MIDIPacketList, into continuation: AsyncStream<Event>.Continuation) {
+    public static func parse(packetList: MIDIPacketList, into continuation: AsyncStream<Event>.Continuation) {
         var list = packetList
         withUnsafePointer(to: &list.packet) { firstPacket in
             var packet = firstPacket
@@ -37,7 +37,7 @@ enum MIDIFeedback {
 
     /// Parse raw MIDI bytes into one or more events.
     /// Handles running status and SysEx spanning.
-    static func parseBytes(_ bytes: [UInt8]) -> [Event] {
+    public static func parseBytes(_ bytes: [UInt8]) -> [Event] {
         var events: [Event] = []
         var i = 0
 

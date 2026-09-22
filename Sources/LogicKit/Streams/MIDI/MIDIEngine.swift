@@ -3,7 +3,7 @@ import Foundation
 
 /// Actor wrapping CoreMIDI. Creates a virtual source (for sending MIDI to Logic Pro)
 /// and a virtual destination (for receiving MIDI from Logic Pro).
-actor MIDIEngine {
+public actor MIDIEngine {
     private var client: MIDIClientRef = 0
     private var virtualSource: MIDIEndpointRef = 0
     private var virtualDestination: MIDIEndpointRef = 0
@@ -13,10 +13,10 @@ actor MIDIEngine {
     private var isRunning = false
 
     /// Stream of inbound MIDI packets from Logic Pro via the virtual destination.
-    let inboundMessages: AsyncStream<MIDIFeedback.Event>
+    public let inboundMessages: AsyncStream<MIDIFeedback.Event>
     private let inboundContinuation: AsyncStream<MIDIFeedback.Event>.Continuation
 
-    init() {
+    public init() {
         let (stream, continuation) = AsyncStream<MIDIFeedback.Event>.makeStream()
         self.inboundMessages = stream
         self.inboundContinuation = continuation
@@ -29,13 +29,13 @@ actor MIDIEngine {
     // MARK: - Lifecycle
 
     /// Create the CoreMIDI client, virtual source, and virtual destination.
-    func start() throws {
+    public func start() throws {
         guard !isRunning else { return }
 
         var status = noErr
 
         // Create client.
-        let clientName = ServerConfig.virtualMIDISourceName as CFString
+        let clientName = MIDIConfig.sourceName as CFString
         status = MIDIClientCreateWithBlock(clientName, &client) { [weak self] notification in
             self?.handleMIDINotification(notification)
         }
@@ -44,14 +44,14 @@ actor MIDIEngine {
         }
 
         // Virtual source — data we send appears here for Logic to receive.
-        let sourceName = ServerConfig.virtualMIDISourceName as CFString
+        let sourceName = MIDIConfig.sourceName as CFString
         status = MIDISourceCreate(client, sourceName, &virtualSource)
         guard status == noErr else {
             throw MIDIEngineError.sourceCreationFailed(status)
         }
 
         // Virtual destination — Logic sends data here for us to receive.
-        let sinkName = ServerConfig.virtualMIDISinkName as CFString
+        let sinkName = MIDIConfig.sinkName as CFString
         let continuation = self.inboundContinuation
         status = MIDIDestinationCreateWithBlock(client, sinkName, &virtualDestination) { packetList, _ in
             let packets = packetList.pointee
@@ -62,11 +62,11 @@ actor MIDIEngine {
         }
 
         isRunning = true
-        Log.info("MIDIEngine started — source: \(ServerConfig.virtualMIDISourceName), sink: \(ServerConfig.virtualMIDISinkName)", subsystem: "midi")
+        Log.info("MIDIEngine started — source: \(MIDIConfig.sourceName), sink: \(MIDIConfig.sinkName)", subsystem: "midi")
     }
 
     /// Tear down all CoreMIDI resources.
-    func stop() {
+    public func stop() {
         guard isRunning else { return }
         for source in additionalVirtualSources where source != 0 {
             MIDIEndpointDispose(source)
@@ -148,13 +148,13 @@ actor MIDIEngine {
     // MARK: - Send: Notes
 
     @discardableResult
-    func sendNoteOn(channel: UInt8 = 0, note: UInt8, velocity: UInt8 = 100) -> Bool {
+    public func sendNoteOn(channel: UInt8 = 0, note: UInt8, velocity: UInt8 = 100) -> Bool {
         let status: UInt8 = 0x90 | (channel & 0x0F)
         return sendShortMessage([status, note & 0x7F, velocity & 0x7F])
     }
 
     @discardableResult
-    func sendNoteOff(channel: UInt8 = 0, note: UInt8, velocity: UInt8 = 0) -> Bool {
+    public func sendNoteOff(channel: UInt8 = 0, note: UInt8, velocity: UInt8 = 0) -> Bool {
         let status: UInt8 = 0x80 | (channel & 0x0F)
         return sendShortMessage([status, note & 0x7F, velocity & 0x7F])
     }
@@ -162,7 +162,7 @@ actor MIDIEngine {
     // MARK: - Send: Control Change
 
     @discardableResult
-    func sendCC(channel: UInt8 = 0, controller: UInt8, value: UInt8) -> Bool {
+    public func sendCC(channel: UInt8 = 0, controller: UInt8, value: UInt8) -> Bool {
         let status: UInt8 = 0xB0 | (channel & 0x0F)
         return sendShortMessage([status, controller & 0x7F, value & 0x7F])
     }
@@ -170,7 +170,7 @@ actor MIDIEngine {
     // MARK: - Send: Program Change
 
     @discardableResult
-    func sendProgramChange(channel: UInt8 = 0, program: UInt8) -> Bool {
+    public func sendProgramChange(channel: UInt8 = 0, program: UInt8) -> Bool {
         let status: UInt8 = 0xC0 | (channel & 0x0F)
         return sendShortMessage([status, program & 0x7F])
     }
@@ -179,7 +179,7 @@ actor MIDIEngine {
 
     /// Send pitch bend. `value` is 14-bit (0-16383), center = 8192.
     @discardableResult
-    func sendPitchBend(channel: UInt8 = 0, value: UInt16 = 8192) -> Bool {
+    public func sendPitchBend(channel: UInt8 = 0, value: UInt16 = 8192) -> Bool {
         let clamped = min(value, 16383)
         let lsb = UInt8(clamped & 0x7F)
         let msb = UInt8((clamped >> 7) & 0x7F)
@@ -207,7 +207,7 @@ actor MIDIEngine {
 
     /// Send a complete SysEx message (must start with 0xF0 and end with 0xF7).
     @discardableResult
-    func sendSysEx(_ bytes: [UInt8]) -> Bool {
+    public func sendSysEx(_ bytes: [UInt8]) -> Bool {
         guard bytes.first == 0xF0, bytes.last == 0xF7 else {
             Log.error("Invalid SysEx: must start with F0 and end with F7", subsystem: "midi")
             return false
@@ -219,7 +219,7 @@ actor MIDIEngine {
 
     /// Send arbitrary MIDI bytes through the virtual source.
     @discardableResult
-    func sendRawBytes(_ bytes: [UInt8]) -> Bool {
+    public func sendRawBytes(_ bytes: [UInt8]) -> Bool {
         guard isRunning else {
             Log.warn("MIDIEngine not running — dropping message", subsystem: "midi")
             return false

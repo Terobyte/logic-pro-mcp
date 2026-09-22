@@ -61,4 +61,26 @@ enum ArgValidator {
         }
         return [try one(a)]
     }
+
+    static let midiSig = #"logic_midi {events: [{type: note|cc|pc|pitchbend, ch: 1..16, note, vel, dur_ms, cc, value, program}]}"#
+    static func midi(_ args: [String: Value]?) throws -> [MIDIEvent] {
+        let a = args ?? [:]
+        try onlyKeys(a, ["events"], midiSig)
+        guard let items = a["events"]?.arrayValue, (1...256).contains(items.count) else { throw bad(midiSig, "events must have 1..256 items") }
+        return try items.map { item in
+            guard let o = item.objectValue, let type = string(o["type"]) else { throw bad(midiSig, "each event needs type") }
+            func i(_ k: String, _ d: Int? = nil) throws -> Int {
+                if let v = o[k]?.intValue { return v }
+                if let d { return d }
+                throw bad(midiSig, "\(type) needs \(k)")
+            }
+            switch type {
+            case "note": return .note(ch: try i("ch", 1), note: try i("note"), vel: try i("vel", 100), durMs: try i("dur_ms", 250))
+            case "cc": return .cc(ch: try i("ch", 1), cc: try i("cc"), value: try i("value"))
+            case "pc": return .pc(ch: try i("ch", 1), program: try i("program"))
+            case "pitchbend": return .pitchBend(ch: try i("ch", 1), value: try i("value", 8192))
+            default: throw bad(midiSig, "unknown type \(type)")
+            }
+        }
+    }
 }

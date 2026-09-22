@@ -10,7 +10,7 @@ actor OSCServer {
     let messages: AsyncStream<OSCMessage>
     private let continuation: AsyncStream<OSCMessage>.Continuation
 
-    init(port: UInt16 = ServerConfig.oscReceivePort) {
+    init(port: UInt16 = OSCConfig.receivePort) {
         self.port = NWEndpoint.Port(rawValue: port)!
         let (stream, continuation) = AsyncStream<OSCMessage>.makeStream()
         self.messages = stream

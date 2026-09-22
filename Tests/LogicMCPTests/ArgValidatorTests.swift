@@ -22,4 +22,10 @@ final class ArgValidatorTests: XCTestCase {
         XCTAssertEqual(multi.count, 1)
         XCTAssertThrowsError(try ArgValidator.perform(["path": .string("/")]))
     }
+
+    func testMidi() throws {
+        let e = try ArgValidator.midi(["events": .array([.object(["type": .string("note"), "note": .int(60)])])])
+        XCTAssertEqual(e, [.note(ch: 1, note: 60, vel: 100, durMs: 250)])
+        XCTAssertThrowsError(try ArgValidator.midi(["events": .array([.object(["type": .string("cc")])])]))
+    }
 }

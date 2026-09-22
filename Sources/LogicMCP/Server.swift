@@ -13,8 +13,10 @@ enum Handlers {
                 text = try await session.set(try ArgValidator.set(p.arguments))
             case "logic_do":
                 text = try await session.perform(steps: try ArgValidator.perform(p.arguments))
+            case "logic_midi":
+                text = try await session.midi(try ArgValidator.midi(p.arguments))
             default:
-                throw LogicError.invalidArgs(signature: "tools: logic_read, logic_set, logic_do", detail: "unknown tool \(p.name)")
+                throw LogicError.invalidArgs(signature: "tools: logic_read, logic_set, logic_do, logic_midi", detail: "unknown tool \(p.name)")
             }
             return CallTool.Result(content: [.text(text)], isError: false)
         } catch let e as LogicError {

@@ -30,6 +30,12 @@ enum ToolDefs {
                     "steps": prop("array", "[{path, action, args?}]"),
                  ])]),
                  annotations: .init(readOnlyHint: false, destructiveHint: true, idempotentHint: false, openWorldHint: false)),
+            Tool(name: "logic_midi",
+                 description: "Send realtime MIDI from the LogicProMCP-Out source. Result is 'sent' (not verified).",
+                 inputSchema: .object(["type": .string("object"), "required": .array([.string("events")]), "properties": .object([
+                    "events": prop("array", "[{type: note|cc|pc|pitchbend, ch?, note, vel?, dur_ms?, cc, value, program}]"),
+                 ])]),
+                 annotations: .init(readOnlyHint: false, destructiveHint: false, idempotentHint: false, openWorldHint: false)),
         ]
     }
 }

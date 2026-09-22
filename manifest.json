@@ -1,7 +1,7 @@
 {
   "name": "logic-pro-mcp",
   "display_name": "Logic Pro MCP Server",
-  "description": "Bidirectional, stateful control of Logic Pro from AI assistants. 8 dispatcher tools + 7 resources across 5 native macOS channels.",
+  "description": "Logic Pro as a verified map: read, set, do, midi. Accessibility only.",
   "version": "0.1.0",
   "author": "Kolton Jacobs",
   "license": "MIT",
@@ -18,26 +18,13 @@
     }
   },
   "permissions": [
-    "accessibility",
-    "automation"
+    "accessibility"
   ],
   "tools": [
-    "logic_transport",
-    "logic_tracks",
-    "logic_mixer",
-    "logic_midi",
-    "logic_edit",
-    "logic_navigate",
-    "logic_project",
-    "logic_system"
+    "logic_read",
+    "logic_set",
+    "logic_do",
+    "logic_midi"
   ],
-  "resources": [
-    "logic://transport/state",
-    "logic://tracks",
-    "logic://tracks/{index}",
-    "logic://mixer",
-    "logic://project/info",
-    "logic://midi/ports",
-    "logic://system/health"
-  ]
+  "resources": []
 }

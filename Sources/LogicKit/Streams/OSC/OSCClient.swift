@@ -9,7 +9,7 @@ actor OSCClient {
     private var isReady = false
     private var connectionGeneration = 0
 
-    init(host: String = ServerConfig.oscHost, port: UInt16 = ServerConfig.oscSendPort) {
+    init(host: String = OSCConfig.host, port: UInt16 = OSCConfig.sendPort) {
         self.host = NWEndpoint.Host(host)
         self.port = NWEndpoint.Port(rawValue: port)!
     }
