@@ -1,0 +1,32 @@
+{"meta":{"logicVersion":"11.2","capturedAt":"2026-09-21T00:00:00Z","project":"fixture-mini"},
+ "roots":{
+  "mainWindow":{"a":{"role":"AXWindow","subrole":"AXStandardWindow","title":"fixture-mini - Tracks","actions":[]},"c":[
+   {"a":{"role":"AXGroup","desc":"Tracks header","actions":[]},"c":[
+    {"a":{"role":"AXLayoutItem","desc":"Track 1 “Beat”","selected":false,"actions":["AXPress"]},"c":[
+      {"a":{"role":"AXCheckBox","desc":"Mute","value":0,"actions":["AXPress"]},"c":[]},
+      {"a":{"role":"AXCheckBox","desc":"Solo","value":1,"actions":["AXPress"]},"c":[]},
+      {"a":{"role":"AXSlider","desc":"Volume","value":173,"valueDescription":"0.0 dB","actions":["AXIncrement","AXDecrement"]},"c":[]}]},
+    {"a":{"role":"AXLayoutItem","desc":"Track 2 “Rose Vocal”","selected":true,"actions":["AXPress"]},"c":[
+      {"a":{"role":"AXDisclosureTriangle","value":1,"actions":["AXPress"]},"c":[]},
+      {"a":{"role":"AXCheckBox","desc":"Mute","value":0,"actions":["AXPress"]},"c":[]}]},
+    {"a":{"role":"AXLayoutItem","desc":"Track 3 “Warm Vocal”","selected":false,"actions":["AXPress"]},"c":[]},
+    {"a":{"role":"AXLayoutItem","desc":"Track 3 “Warm Vocal”, Take","actions":[]},"c":[]},
+    {"a":{"role":"AXLayoutItem","desc":"Track 3 “Warm Vocal”, Take","actions":[]},"c":[]},
+    {"a":{"role":"AXLayoutItem","desc":"Track 4 “PreDelay”, no output","selected":false,"actions":["AXPress"]},"c":[]}]},
+   {"a":{"role":"AXGroup","desc":"Control Bar","actions":[]},"c":[
+    {"a":{"role":"AXCheckBox","desc":"Play","value":0,"actions":["AXPress"]},"c":[]},
+    {"a":{"role":"AXCheckBox","desc":"Record","value":0,"actions":["AXPress"]},"c":[]}]},
+   {"a":{"role":"AXLayoutItem","help":"Left inspector channel strip","actions":[]},"c":[
+    {"a":{"role":"AXSlider","desc":"volume fader","valueDescription":"-4.2 dB","actions":["AXIncrement","AXDecrement"]},"c":[]},
+    {"a":{"role":"AXSlider","desc":"pan","valueDescription":"0","actions":["AXIncrement","AXDecrement"]},"c":[]},
+    {"a":{"role":"AXGroup","actions":[]},"c":[
+     {"a":{"role":"AXGroup","desc":"Channel EQ","actions":[]},"c":[
+      {"a":{"role":"AXCheckBox","desc":"bypass","value":0,"actions":["AXPress"]},"c":[]}]},
+     {"a":{"role":"AXGroup","desc":"ChromaVerb","actions":[]},"c":[
+      {"a":{"role":"AXCheckBox","desc":"bypass","value":1,"actions":["AXPress"]},"c":[]}]}]},
+    {"a":{"role":"AXStaticText","title":"peak level meter, -4.7 dB","actions":[]},"c":[]}]}]},
+  "menuBar":{"a":{"role":"AXMenuBar","actions":[]},"c":[
+   {"a":{"role":"AXMenuBarItem","title":"Edit","actions":["AXPress"]},"c":[
+    {"a":{"role":"AXMenu","actions":[]},"c":[
+     {"a":{"role":"AXMenuItem","title":"Undo Insert Plug-in","enabled":true,"actions":["AXPress"]},"c":[]},
+     {"a":{"role":"AXMenuItem","title":"Redo","enabled":false,"actions":["AXPress"]},"c":[]}]}]}]}}}

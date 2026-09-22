@@ -6,11 +6,23 @@ let package = Package(
     platforms: [.macOS(.v14)],
     products: [
         .executable(name: "LogicProMCP", targets: ["LogicProMCP"]),
+        .library(name: "LogicKit", targets: ["LogicKit"]),
+        .executable(name: "logic-ax-dump", targets: ["logic-ax-dump"]),
     ],
     dependencies: [
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.12.1"),
     ],
     targets: [
+        .target(
+            name: "LogicKit",
+            path: "Sources/LogicKit",
+            linkerSettings: [
+                .linkedFramework("CoreMIDI"),
+                .linkedFramework("ApplicationServices"),
+                .linkedFramework("CoreGraphics"),
+                .linkedFramework("AppKit"),
+            ]
+        ),
         .executableTarget(
             name: "LogicProMCP",
             dependencies: [
@@ -23,10 +35,25 @@ let package = Package(
                 .linkedFramework("CoreGraphics"),
             ]
         ),
+        .executableTarget(
+            name: "logic-ax-dump",
+            dependencies: ["LogicKit"],
+            path: "Sources/logic-ax-dump"
+        ),
         .testTarget(
             name: "LogicProMCPTests",
             dependencies: ["LogicProMCP"],
             path: "Tests/LogicProMCPTests"
+        ),
+        .testTarget(
+            name: "LogicKitTests",
+            dependencies: ["LogicKit"],
+            path: "Tests/LogicKitTests"
+        ),
+        .testTarget(
+            name: "LogicLiveTests",
+            dependencies: ["LogicKit"],
+            path: "Tests/LogicLiveTests"
         ),
     ]
 )
