@@ -8,7 +8,11 @@ public final class AXStats: Sendable {
     private let state = OSAllocatedUnfairLock(initialState: (messages: 0, timeouts: 0))
 
     public init() {}
-    public func message(_ n: Int = 1) { state.withLock { $0.messages += n } }
+    /// IPC budget counter. Negative counts are ignored so a bad caller cannot shrink the budget.
+    public func message(_ n: Int = 1) {
+        guard n > 0 else { return }
+        state.withLock { $0.messages += n }
+    }
     public func timeout() { state.withLock { $0.timeouts += 1 } }
     public var messages: Int { state.withLock { $0.messages } }
     public var timeouts: Int { state.withLock { $0.timeouts } }
