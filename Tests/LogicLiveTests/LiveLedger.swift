@@ -19,11 +19,3 @@ class LiveCase: XCTestCase {
     override func setUp() { continueAfterFailure = false }
     func env(_ root: LiveAXRoot) -> RecipeEnv { RecipeEnv(root: root, locale: .en, logicPID: root.pid) }
 }
-
-/// Placeholders for CompletenessTests until Task 29 adds `LiveReadTests.swift` with LogicSession.
-final class LiveReadTests: LiveCase {
-    func testReadRoot() throws { throw XCTSkip("Task 29") }
-    func testReadTrack() throws { throw XCTSkip("Task 29") }
-    func testReadSelectedStrip() throws { throw XCTSkip("Task 29") }
-    func testReadTransport() throws { throw XCTSkip("Task 29") }
-}
