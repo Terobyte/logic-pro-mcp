@@ -17,6 +17,7 @@ let package = Package(
         .target(
             name: "LogicKit",
             path: "Sources/LogicKit",
+            resources: [.copy("Resources/ledger.json")],
             linkerSettings: [
                 .linkedFramework("CoreMIDI"),
                 .linkedFramework("ApplicationServices"),
