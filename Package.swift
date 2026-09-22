@@ -38,6 +38,11 @@ let package = Package(
             ]
         ),
         .executableTarget(
+            name: "LogicMCP",
+            dependencies: ["LogicKit", .product(name: "MCP", package: "swift-sdk")],
+            path: "Sources/LogicMCP"
+        ),
+        .executableTarget(
             name: "logic-ax-dump",
             dependencies: ["LogicKit"],
             path: "Sources/logic-ax-dump"
@@ -52,6 +57,11 @@ let package = Package(
             name: "LogicProMCPTests",
             dependencies: ["LogicProMCP"],
             path: "Tests/LogicProMCPTests"
+        ),
+        .testTarget(
+            name: "LogicMCPTests",
+            dependencies: ["LogicMCP", "LogicKit"],
+            path: "Tests/LogicMCPTests"
         ),
         .testTarget(
             name: "LogicKitTests",
