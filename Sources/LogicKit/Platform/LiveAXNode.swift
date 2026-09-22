@@ -102,6 +102,28 @@ public final class LiveAXNode: AXNode, @unchecked Sendable {
         try axCheck(AXUIElementSetAttributeValue(element, attribute as CFString, cf))
     }
 
+    public func attributeNames() throws -> [String] {
+        var names: CFArray?
+        AXStats.shared.message()
+        try axCheck(AXUIElementCopyAttributeNames(element, &names))
+        return (names as? [String]) ?? []
+    }
+
+    /// Any attribute rendered with `String(describing:)` — for spikes (AXFrame, AXPosition, …).
+    public func rawAttribute(_ name: String) throws -> String? {
+        var raw: AnyObject?
+        AXStats.shared.message()
+        let err = AXUIElementCopyAttributeValue(element, name as CFString, &raw)
+        if err == .noValue || err == .attributeUnsupported { return nil }
+        try axCheck(err)
+        return raw.map { String(describing: $0) }
+    }
+
+    public func setRaw(_ name: String, bool: Bool) throws {
+        AXStats.shared.message()
+        try axCheck(AXUIElementSetAttributeValue(element, name as CFString, (bool ? kCFBooleanTrue : kCFBooleanFalse)!))
+    }
+
     public var identityToken: Int { Int(truncatingIfNeeded: CFHash(element)) }
 }
 

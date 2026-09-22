@@ -13,3 +13,5 @@ DerivedData/
 *.p12
 *.key
 *.xcodeproj
+/Tests/Fixtures/projects/*
+!/Tests/Fixtures/projects/README.md

@@ -8,6 +8,7 @@ let package = Package(
         .executable(name: "LogicProMCP", targets: ["LogicProMCP"]),
         .library(name: "LogicKit", targets: ["LogicKit"]),
         .executable(name: "logic-ax-dump", targets: ["logic-ax-dump"]),
+        .executable(name: "logic-probe", targets: ["logic-probe"]),
     ],
     dependencies: [
         .package(url: "https://github.com/modelcontextprotocol/swift-sdk.git", from: "0.12.1"),
@@ -39,6 +40,12 @@ let package = Package(
             name: "logic-ax-dump",
             dependencies: ["LogicKit"],
             path: "Sources/logic-ax-dump"
+        ),
+        .executableTarget(
+            name: "logic-probe",
+            dependencies: ["LogicKit"],
+            path: "Sources/logic-probe",
+            linkerSettings: [.linkedFramework("CoreMIDI")]
         ),
         .testTarget(
             name: "LogicProMCPTests",
